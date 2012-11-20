@@ -5,19 +5,31 @@ Group:
   Andre Gatorano
   agatorano@gmail.com
 
+
 Project Choice:
   1.1 Homology based gene finder
 
+
 C1 Questions:
   1. Download the Scenedesmus genomic sequence provided. How large is the available data-set?
+
     # of sequences = 18029
     # of base pairs = 111749585
     size of file =  109 MB
 
+
   2. Download the Chlamydomonas Proteome. How large is the data-set? How many sequences?
+
     # of sequences = 15935
     # of amino acids = 10838366
     size of file = 11 MB
 
-  
-    
+
+  3. Blast each Chlamy protein against the Scendesmus genome. What version of Blast will you use?
+     How many queries get at least one hit (C1)? 
+     
+    If we are querying our chalmy protein sequences against a database of DNA in the form of the
+    scenedesmus genome, we should use tblastn which, according to the Blast website, "searches
+    translated nucleotide databases using a protein query." However, after 8 hours of using tblastn
+    with the Chlamy proteome being blasted against the Scenedesmus dimorphus genome, it was still
+    running. If any changes occur, I will be sure to note them here. 
