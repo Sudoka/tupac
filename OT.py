@@ -9,14 +9,15 @@ import time
 def main():
   
   seq_dict = pickle.load(open('data/chla_prot.pickle', 'r'))
-  f = open('largechunk.OT', 'w')
+  f = open(sys.argv[1], 'w')
 
   #offset for chunks of sequences to blast
   o = 0
   start = time.time()
   seq_dict_keys = seq_dict.keys()
   n = len(seq_dict_keys)
-  while time.time()-start < 60*10 and o+50 < n:
+  SECONDS_TO_RUN = 1
+  while time.time()-start < SECONDS_TO_RUN and o+50 < n:
     sample_seqs = [(k, seq_dict[k]) for k in seq_dict_keys[o:o+50]]
     s = get_OT(sample_seqs)
     f.write(s)
