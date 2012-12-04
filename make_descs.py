@@ -1,5 +1,6 @@
 #!/usr/bin/python -tt
 import re
+from sys import argv as args
 import sys
 from Bio.Blast import NCBIWWW
 from Bio.Blast import NCBIXML
@@ -7,23 +8,36 @@ import cPickle as pickle
 import time
 
 def main():
-  
-  seq_dict = pickle.load(open('data/chla_prot.pickle', 'r'))
+  if '-h' in args or '--h' in args or '--help' in args:
+    print 'Usage is as follows: ./makefile -i infile -o outfile -s stepsize -t runtime_in_seconds'
+    print 'Good default values are -s 500 and -t 120'
+    sys.exit()
+
+  vals = [args[args.index(flag) + 1] for flag in ['-i', '-o', '-s', '-t']]
+  infile = vals[0]
+  outfile = vals[1]
+  step = int(vals[2])
+  runtime = int(vals[3]) 
+ 
+  seq_dict = pickle.load(open(infile, 'r'))
 
   #offset for chunks of sequences to blast
   o = 0
-  STEP_SIZE = 250
   start = time.time()
-  seq_dict_keys = seq_dict.keys()
-  n = len(seq_dict_keys)
-  SECONDS_TO_RUN = 60*1
-  while time.time()-start < SECONDS_TO_RUN and o+STEP_SIZE < n:
-    sample_seqs = [(k, seq_dict[k]) for k in seq_dict_keys[o:o+STEP_SIZE]]
-    descs = get_descriptions(sample_seqs)
-    o += STEP_SIZE
-    print time.time()-start
-  pickle.dump(descs, open('data/one.descs', 'w'))
+  seq_dict_keys = seq_dict.keys(); n = len(seq_dict_keys)
+  descs = []
 
+  #logic that queries as many queries possible in time given, and if we run out of queries before allotted time, end querying
+  while time.time()-start < runtime and o+step < n:
+    sample_seqs = [(k, seq_dict[k]) for k in seq_dict_keys[o:o+step]]
+    descs += get_descriptions(sample_seqs)
+    o += step
+    print 'Time Elapsed:', int(time.time()-start), 'seconds'
+  pickle.dump(descs, open(outfile, 'w'))
+
+
+# given list of tuples of form [('gi|xxx|xxxx..', 'AA_SEQUENCE'), ... ]
+# and performs queries based on this.
 def get_descriptions(sample_seqs):
   query_string = ''
   for seq in sample_seqs:
