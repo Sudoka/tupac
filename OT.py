@@ -4,15 +4,25 @@ import sys
 from Bio.Blast import NCBIWWW
 from Bio.Blast import NCBIXML
 import cPickle as pickle
+import time
 
 def main():
   
   seq_dict = pickle.load(open('data/chla_prot.pickle', 'r'))
-  sample_seqs = [(k, seq_dict[k]) for k in seq_dict.keys()[:50]]
-  s = write_OT(sample_seqs)
-  open('sample.OT', 'w').write(s)
+  f = open('largechunk.OT', 'w')
 
-def write_OT(sample_seqs):
+  #offset for chunks of sequences to blast
+  o = 0
+  start = time.time()
+  seq_dict_keys = seq_dict.keys()
+  n = len(seq_dict_keys)
+  while time.time()-start < 60*10 and o+50 < n:
+    sample_seqs = [(k, seq_dict[k]) for k in seq_dict_keys[o:o+50]]
+    s = get_OT(sample_seqs)
+    f.write(s)
+    o += 50
+
+def get_OT(sample_seqs):
   s = ''
   query_string = ''
   for seq in sample_seqs:
