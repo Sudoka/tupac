@@ -1,5 +1,6 @@
 #!/usr/bin/python -tt
 import re
+from sys import argv as args
 import sys
 from Bio.Blast import NCBIWWW
 from Bio.Blast import NCBIXML
@@ -7,13 +8,64 @@ import cPickle as pickle
 import time
 
 def main():
-  
-  seq_dict = pickle.load(open('data/chla_prot.pickle', 'r'))
-  descs = sorted(pickle.load(open('data/20minutes.desc', 'r')), key=lambda x: x[3], reverse=True)
-  for desc in descs[:5]:
-    print homolog_info(desc)
+  # Arguments:
+  # -sf    -  pickled seq_dict file   
+  # -df    -  pickled descriptor file
+  # -info  -  what type of info you want, options include:
+  #             -orthotable
+  #             -exontable
+  #             -general
+  # -of    -  outfile to write the info to, if supplied with 'stdout' it will print to screen
+  # -t     -  integer argument specifying top hits to write, if -1 will write all hits in unsorted order
 
-def homolog_info(desc):
+  if '-h' in args or '--h' in args or '--help' in args:
+    print 'Usage is as follows: ./display.py -sf seq_dict_file -df descriptor_file -info info_type -of outfile -t top_hits'
+    sys.exit()
+  vals = [args[args.index(flag) + 1] for flag in ['-sf', '-df', '-info', '-of', '-t']]
+
+  info = vals[2]
+  outfile = vals[3]
+  top_hits = int(vals[4])
+  seq_dict = pickle.load(open(vals[0], 'r'))
+  descs = pickle.load(open(vals[1], 'r'))
+
+  if top_hits != -1:
+    descs = sorted(descs, key= lambda x: x[3], reverse=True)
+    descs = descs[:top_hits]
+
+  print_str = ''
+
+  if info == 'orthotable':
+    for desc in descs:
+      print_str += orthotable_row(desc)
+  elif info == 'exontable':
+    for desc in descs:
+      print_str += exontable_row(desc)
+  elif info == 'general':
+    for desc in descs:
+      print_str += general_row(desc)
+
+  if outfile == 'stdout':
+    print print_str
+  else:
+    open(outfile, 'w').write(print_str)
+
+
+def orthotable_row(desc):
+  if desc[3] == 0.0:
+    return desc[0] + '\t' + 'NO_HIT_FOUND' + ' '*16 +'\t \t' + str(0) + '\n'
+  if desc[3] > .9:
+    qc = 2
+  else:
+    qc = 1
+  return desc[0] + '\t' + desc[1] + '\t' + desc[2] + '\t' + str(qc) + '\n'
+
+def exontable_row(desc):
+  if desc[3] == 0.0:
+    return desc[0] + '\t' + 'NO_HITS_FOUND'+' '*16 + '\n'
+  return desc[0] + '\t' + desc[1] + '\t' + ''.join( [ str(align[1]) + ' ' for align in desc[4] ] ) + '\n'
+
+def general_row(desc):
   s = 'Protein ID:\t'+desc[0]+'\n'
   s += 'Gene ID:\t'+desc[1]+'\n'
   s += 'Query Coverage:\t'+str(int(desc[3]*100))+'%'+'\n'
