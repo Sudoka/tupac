@@ -9,77 +9,51 @@ import time
 def main():
   
   seq_dict = pickle.load(open('data/chla_prot.pickle', 'r'))
-  descs = sorted(pickle.load(open('data/three.descs', 'r')), key=lambda x: x[3], reverse=True)
-  print len(descs)
+  descs = sorted(pickle.load(open('data/20minutes.desc', 'r')), key=lambda x: x[3], reverse=True)
   for desc in descs[:5]:
-    print desc[3], '\n'
-    print seq_dict[desc[0]], '\n'
-    for align in desc[4]:
-      for s in align[-1][:-1]:
-        print s
-      print ''
-    print '\n\n'
+    print homolog_info(desc)
 
-  '''
-  #offset for chunks of sequences to blast
-  o = 0
-  STEP_SIZE = 250
-  start = time.time()
-  seq_dict_keys = seq_dict.keys()
-  n = len(seq_dict_keys)
-  SECONDS_TO_RUN = 60*1
-  while time.time()-start < SECONDS_TO_RUN and o+STEP_SIZE < n:
-    sample_seqs = [(k, seq_dict[k]) for k in seq_dict_keys[o:o+STEP_SIZE]]
-    descs = get_descriptions(sample_seqs)
-    o += STEP_SIZE
-    print time.time()-start
-  pickle.dump(descs, open('data/one.descs', 'w'))
-  '''
+def homolog_info(desc):
+  s = 'Protein ID:\t'+desc[0]+'\n'
+  s += 'Gene ID:\t'+desc[1]+'\n'
+  s += 'Query Coverage:\t'+str(int(desc[3]*100))+'%'+'\n'
+  s += 'Senses:\t'+str([p_or_m(align[2][3]) for align in desc[4]])+'\n'
+  s += 'Query / Gene Coords:\t'
+  for align in desc[4]:
+    #s += str(align[0][0])+':'+str(align[0][1])+'\t'
+    s += 'Q: ' + str(align[0]) + ' G: ' + str(align[1]) + '\t'
+  s += '\n\n'
+  s += pretty_print(align_strings(desc))
+  return s
 
-def get_descriptions(sample_seqs):
-  query_string = ''
-  for seq in sample_seqs:
-    query_string += seq[0]+'\n'+seq[1]+'\n'
+def pretty_print(align_strings):
+  n = len(align_strings[0])
+  offset = 0
+  s = ''
+  while offset+80 < n:
+    s += align_strings[0][offset:offset+80]+'\n'
+    s += align_strings[1][offset:offset+80]+'\n'
+    s += align_strings[2][offset:offset+80]+'\n\n'
+    offset += 80
+  if not align_strings[0][offset:] == '':
+    s += align_strings[0][offset:]+'\n'
+    s += align_strings[1][offset:]+'\n'
+    s += align_strings[2][offset:]+'\n\n'
+  return s
 
-  blast_handle = NCBIWWW.qblast('tblastn', 'nr', query_string, entrez_query='scenedesmus dimorphus')
-  blast_handle.seek(0)
-  records = NCBIXML.parse(blast_handle)
-  descs = []
-  i = 0
-  for record in records:
-    if len(record.alignments) > 0:
-      for align in record.alignments:
-        desc = [sample_seqs[i][0], align.hit_id]
-
-        frames = [hsp.frame[1] for hsp in align.hsps]
-        if valid_align(frames):
-          desc.append(plus_or_minus(frames[0]))
-        else:
-          desc.append('/')
-
-        query_coverage = float(sum([len(hsp.sbjct) for hsp in align.hsps])) / len(sample_seqs[i][1])
-        desc.append(query_coverage)
-
-        #list of tuples of form ( (query_start, query_end), (sbjct_start, sbjct_end), (query, match, sbjct, frame) ) sorted by query_start
-        hsp_info = sorted([((hsp.query_start, hsp.query_end), (hsp.sbjct_start, hsp.sbjct_end), (hsp.query, hsp.match, hsp.sbjct, hsp.frame[1])) for hsp in align.hsps], key= lambda t: t[0][0])
-        desc.append(hsp_info)
-
-    else:
-      desc = [sample_seqs[i][0], ' ', ' ', 0.0, [], []]
-
-    descs.append(desc)
-    i += 1
-  return descs
-
-def plus_or_minus(n):
+def align_strings(desc):
+  s1 = ''; s2 = ''; s3 = '';
+  for aligns in desc[4]:
+    s1 += '         ' + aligns[2][0]
+    s2 += '   ~~~   ' + aligns[2][1]
+    s3 += '         ' + aligns[2][2]
+  return (s1[9:], s2[9:], s3[9:])
+      
+def p_or_m(n):
   if n < 0:
     return '-'
   return '+'
 
-#given list of frame values, returns true if all are < 0 or all are > 0
-#this ensures the alignment is either sense or antisense derived
-def valid_align(x):
-  return all(item > 0 for item in x) or all(item < 0 for item in x)
 
 # Standard boilerplate to call the main() function.
 if __name__ == '__main__':
