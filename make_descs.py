@@ -9,17 +9,22 @@ import time
 
 def main():
   if '-h' in args or '--h' in args or '--help' in args:
-    print 'Usage is as follows: ./makefile -i infile -o outfile -s stepsize -t runtime_in_seconds'
-    print 'Good default values are -s 500 and -t 120'
+    print 'Usage is as follows: ./makefile -if infile -of outfile -s stepsize -t runtime_in_seconds -org organism_name'
+    print 'Good default values are -s 500 and -t 120 -org scenedesmus_dimorphus'
     sys.exit()
 
-  vals = [args[args.index(flag) + 1] for flag in ['-i', '-o', '-s', '-t']]
+  vals = [args[args.index(flag) + 1] for flag in ['-if', '-of', '-s', '-t', '-org']]
   infile = vals[0]
   outfile = vals[1]
   step = int(vals[2])
-  runtime = int(vals[3]) 
- 
-  seq_dict = pickle.load(open(infile, 'r'))
+  runtime = int(vals[3])
+  organism = vals[4].replace('_', ' ')
+  
+  if infile[-5:] == 'fasta':
+    seq_dict = parse_fasta(infile)
+    pickle.dump(seq_dict, open(infile[:-5]+'seq_dict', 'w'))
+  else:
+    seq_dict = pickle.load(open(infile, 'r'))
 
   #offset for chunks of sequences to blast
   o = 0
@@ -30,20 +35,36 @@ def main():
   #logic that queries as many queries possible in time given, and if we run out of queries before allotted time, end querying
   while time.time()-start < runtime and o+step < n:
     sample_seqs = [(k, seq_dict[k]) for k in seq_dict_keys[o:o+step]]
-    descs += get_descriptions(sample_seqs)
+    descs += get_descriptions(sample_seqs, organism)
     o += step
     print 'Time Elapsed:', int(time.time()-start), 'seconds'
   pickle.dump(descs, open(outfile, 'w'))
 
 
+def parse_fasta(filename):
+  k = ''
+  seq_dict = {}
+  for line in open(filename, 'r'):
+    line = line.replace('\n', '')
+    if line != '':
+      if line[0] == '>':
+        k = line
+      else:
+        if k in seq_dict:
+          seq_dict[k] += line
+        else:
+          seq_dict[k] = ''
+  return seq_dict
+      
+
 # given list of tuples of form [('gi|xxx|xxxx..', 'AA_SEQUENCE'), ... ]
 # and performs queries based on this.
-def get_descriptions(sample_seqs):
+def get_descriptions(sample_seqs, organism):
   query_string = ''
   for seq in sample_seqs:
     query_string += seq[0]+'\n'+seq[1]+'\n'
 
-  blast_handle = NCBIWWW.qblast('tblastn', 'nr', query_string, entrez_query='scenedesmus dimorphus')
+  blast_handle = NCBIWWW.qblast('tblastn', 'nr', query_string, entrez_query=organism)
   blast_handle.seek(0)
   records = NCBIXML.parse(blast_handle)
   descs = []
